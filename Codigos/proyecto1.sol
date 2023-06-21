@@ -20,19 +20,35 @@ contract FablicaDeContrato {
 
     RegistroZoo [] public ListaContratos;
 
-    function creaContrato(address _ownerDelContrato) public {
-        RegistroZoo nuevoContrato = new RegistroZoo(_ownerDelContrato);
+    function creaContrato() public {
+        RegistroZoo nuevoContrato = new RegistroZoo(msg.sender, address(this));
         ListaContratos.push(nuevoContrato);
     }
+    
 
-    function llamadaContrato (uint _contrato, string memory _codigo,
-                            string memory _nombre, 
-                            string memory _especie,
-                            uint8 _edad,
-                            address _cuidador) public {
-        RegistroZoo contrato = RegistroZoo(ListaContratos[_contrato]);
-        contrato.agregarAnimal(_codigo, _nombre, _especie, _edad, _cuidador);
-        contrato.obtenerDataAnimal(_codigo);
+    function llamadaContratoAgregar (
+        uint _index, string memory _codigoAnimal,
+        string memory _nombre, string memory _especie,
+        uint8 _edad, address _cuidador
+        ) public returns(bool){
+        ListaContratos[_index].agregarAnimal(_codigoAnimal, _nombre, _especie, _edad, _cuidador);
+        return true;
+    }
+
+
+    function llamadaContratoVer (uint _index, string memory _tagAnimal) public view returns(string memory, string memory, uint8, address){
+        return ListaContratos[_index].obtenerDataAnimal(_tagAnimal);
+    }
+
+    function interacontrato(uint index) public view returns (address){
+        return ListaContratos[index].llamada();
+    }
+
+    function ownersDelContrato(uint _index) public view returns(address, address){
+        return (
+            ListaContratos[_index].i_owner(),
+            ListaContratos[_index].i_ownerSecundario()
+        );
     }
 
 
@@ -43,9 +59,11 @@ contract RegistroZoo {
     //immutable
     //address public owner;
     address immutable public i_owner;
-    constructor(address _owner) {
+    address immutable public i_ownerSecundario;
+    constructor(address _owner, address _ownerSecundario) {
         //owner = msg.sender;
         i_owner = _owner;
+        i_ownerSecundario = _ownerSecundario;
     }
 
     event nuevoAnimalEvento(string animalTag, string nombreAnimal, address cuidador);
@@ -53,11 +71,15 @@ contract RegistroZoo {
     event edicion(address);
 
     modifier soloOwner {
-        //require(msg.sender == owner, "no eres dueno del contrato");
-        if (msg.sender != i_owner){
+        //require(msg.sender == i_owner || msg.sender == i_ownerSecundario, "no eres dueno del contrato");
+        if (msg.sender != i_owner && msg.sender != i_ownerSecundario){
             revert noOwner();
         }
         _;
+    }
+
+    function llamada() public view returns(address){
+        return msg.sender;
     }
 
     struct animal {
@@ -72,12 +94,10 @@ contract RegistroZoo {
 
     mapping (string => uint) indexLista;
 
-    function agregarAnimal( string memory _codigo,
-                            string memory _nombre, 
-                            string memory _especie,
-                            uint8 _edad,
-                            address _cuidador) 
-                           public soloOwner returns(bool){
+    function agregarAnimal( string memory _codigo, string memory _nombre, 
+                            string memory _especie,uint8 _edad,
+                            address _cuidador) public soloOwner returns(bool){
+
         animal memory nuevoAnimal = animal(_cuidador, _nombre, _especie, _edad, block.timestamp);
         ListaAnimales.push(nuevoAnimal);
         indexLista[_codigo] = ListaAnimales.length - 1;
@@ -90,7 +110,6 @@ contract RegistroZoo {
                                                                                 uint8, 
                                                                                 address){
         uint index = indexLista[_codigoAnimal];
-
         return (
             ListaAnimales[index].nombre,
             ListaAnimales[index].especie,
