@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.18;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
+
 //1274233  859.4669
 //1266567  854.2969 MXN
 //1243857  838.9791 MXN
@@ -11,16 +13,36 @@ error tiempo();
 // now, block.timestamp
 //segundos uint, int
 
-contract FablicaDeContrato {
-    address public immutable i_owner;
+contract FablicaDeContrato is AccessControl {
+    //address public immutable i_owner;
 
     constructor() {
-        i_owner = msg.sender;
+        //i_owner = msg.sender;
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
+
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+    function CrearAdmin(address _nuevoadmin) public returns(bool){
+        _setupRole(ADMIN_ROLE, _nuevoadmin);
+        return true;
+    }
+
+    function RevocarAdmin(address _admin) public returns (bool) {
+        _revokeRole(ADMIN_ROLE,_admin);
+        return true;
+    }
+
+    modifier soloAdmin(){
+        //hasRole(variable_role, address)
+        require(hasRole(ADMIN_ROLE, msg.sender), "no eres admin");
+        _;
+    }
+
 
     RegistroZoo[] public ListaContratos;
 
-    function creaContrato() public {
+    function creaContrato() public soloAdmin {
         RegistroZoo nuevoContrato = new RegistroZoo(msg.sender, address(this));
         ListaContratos.push(nuevoContrato);
     }
